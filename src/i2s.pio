@@ -14,6 +14,119 @@ L2:  out pins, 1     side 0b10
      jmp x--, L2     side 0b11
      out pins, 1     side 0b00
 
+.program I2S_16bit_64fs
+
+.side_set 2
+     set pins, 0     side 0b00
+     nop             side 0b01
+     out pins, 1     side 0b00
+     set x, 14       side 0b01
+L1:  out pins, 1     side 0b00
+     jmp x--, L1     side 0b01
+     set pins, 0     side 0b00
+     out null, 16    side 0b01
+     set pins, 0     side 0b00
+     set x, 12       side 0b01
+L3:  set pins, 0     side 0b00
+     jmp x--, L3     side 0b01
+     set pins, 0     side 0b10
+     nop             side 0b11
+     out pins, 1     side 0b10
+     set x, 14       side 0b11
+L2:  out pins, 1     side 0b10
+     jmp x--, L2     side 0b11
+     set pins, 0     side 0b10
+     out null, 16    side 0b11
+     set pins, 0     side 0b10
+     set x, 12       side 0b11
+L4:  set pins, 0     side 0b10
+     jmp x--, L4     side 0b11
+
+.program I2S_16bit_inv_64fs
+
+.side_set 2
+     set pins, 0     side 0b00
+     nop             side 0b10
+     out pins, 1     side 0b00
+     set x, 14       side 0b10
+L1:  out pins, 1     side 0b00
+     jmp x--, L1     side 0b10
+     set pins, 0     side 0b00
+     out null, 16    side 0b10
+     set pins, 0     side 0b00
+     set x, 12       side 0b10
+L3:  set pins, 0     side 0b00
+     jmp x--, L3     side 0b10
+     set pins, 0     side 0b01
+     nop             side 0b11
+     out pins, 1     side 0b01
+     set x, 14       side 0b11
+L2:  out pins, 1     side 0b01
+     jmp x--, L2     side 0b11
+     set pins, 0     side 0b01
+     out null, 16    side 0b11
+     set pins, 0     side 0b01
+     set x, 12       side 0b11
+L4:  set pins, 0     side 0b01
+     jmp x--, L4     side 0b11
+
+
+.program I2S_24bit
+
+.side_set 2
+     set pins, 0     side 0b00
+     nop             side 0b01
+     out pins, 1     side 0b00
+     set x, 22       side 0b01
+L1:  out pins, 1     side 0b00
+     jmp x--, L1     side 0b01
+     set pins, 0     side 0b00
+     out null, 8     side 0b01
+     set pins, 0     side 0b00
+     set x, 4        side 0b01
+L3:  set pins, 0     side 0b00
+     jmp x--, L3     side 0b01
+     set pins, 0     side 0b10
+     nop             side 0b11
+     out pins, 1     side 0b10
+     set x, 22       side 0b11
+L2:  out pins, 1     side 0b10
+     jmp x--, L2     side 0b11
+     set pins, 0     side 0b10
+     out null, 8     side 0b11
+     set pins, 0     side 0b10
+     set x, 4        side 0b11
+L4:  set pins, 0     side 0b10
+     jmp x--, L4     side 0b11
+
+
+.program I2S_24bit_inv
+
+.side_set 2
+     set pins, 0     side 0b00
+     nop             side 0b10
+     out pins, 1     side 0b00
+     set x, 22       side 0b10
+L1:  out pins, 1     side 0b00
+     jmp x--, L1     side 0b10
+     set pins, 0     side 0b00
+     out null, 8     side 0b10
+     set pins, 0     side 0b00
+     set x, 4        side 0b10
+L3:  set pins, 0     side 0b00
+     jmp x--, L3     side 0b10
+     set pins, 0     side 0b01
+     nop             side 0b11
+     out pins, 1     side 0b01
+     set x, 22       side 0b11
+L2:  out pins, 1     side 0b01
+     jmp x--, L2     side 0b11
+     set pins, 0     side 0b01
+     out null, 8     side 0b11
+     set pins, 0     side 0b01
+     set x, 4        side 0b11
+L4:  set pins, 0     side 0b01
+     jmp x--, L4     side 0b11
 
 
 .program LJ_32bit

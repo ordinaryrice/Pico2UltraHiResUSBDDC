@@ -53,6 +53,10 @@
 #define I2S_DATA_PIN (26)
 #define I2S_SIDESET_BASE (27)
 
+// I2S force 24/16 bits : drop the lsbs (if enabled)
+#define I2S_FORCE_OUTPUT_24BIT (false)
+#define I2S_FORCE_OUTPUT_16BIT (false)
+
 // Upsampler control
 // Core0 ratio is for 48k family; 96k uses /2, 192k uses /4 (min 1).
 #define CORE0_UP_RATIO_HP (8)

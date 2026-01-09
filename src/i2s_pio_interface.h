@@ -13,7 +13,11 @@
 #include "hardware/clocks.h"
 
 extern void I2S_16bit_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
+extern void I2S_16bit_64fs_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
+extern void I2S_24bit_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
 extern void I2S_32bit_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
+extern void I2S_16bit_inv_64fs_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
+extern void I2S_24bit_inv_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
 extern void I2S_32bit_inv_program_init(PIO pio, uint sm, uint data_pin, uint sideset_base, uint freq, pio_sm_config *sm_config_out, uint *offset_out);
 extern void I2S_freq_init(PIO pio, uint sm, pio_sm_config *sm_config, uint offset);
 

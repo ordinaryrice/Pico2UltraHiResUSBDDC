@@ -164,11 +164,33 @@ void init_i2s_interface(void)
     // PIO I2Sの初期化
     if(I2S_SIDESET_CHANGE)
     {
-        I2S_32bit_inv_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        if (I2S_FORCE_OUTPUT_16BIT)
+        {
+            I2S_16bit_inv_64fs_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        }
+        else if (I2S_FORCE_OUTPUT_24BIT)
+        {
+            I2S_24bit_inv_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        }
+        else
+        {
+            I2S_32bit_inv_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        }
     }
     else
     {
-        I2S_32bit_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        if (I2S_FORCE_OUTPUT_16BIT)
+        {
+            I2S_16bit_64fs_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        }
+        else if (I2S_FORCE_OUTPUT_24BIT)
+        {
+            I2S_24bit_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        }
+        else
+        {
+            I2S_32bit_program_init(pio, sm, I2S_DATA_PIN, I2S_SIDESET_BASE, AUDIO_INITIAL_FREQ, &sm_config, &offset);
+        }
     }
 
     reset_i2s_freq();
