@@ -28,6 +28,7 @@
 #include "debug_with_gpio.h"
 #include "ess_specific.h"
 #include "nonblocking_i2c.h"
+#include "gpio_buttons.h"
 
 // パワー管理
 volatile bool is_high_power_mode = true;
@@ -162,6 +163,12 @@ bool __not_in_flash_func(core0_timer_callback)(struct repeating_timer *t)
 
 int main(void)
 {
+	// HIDボタン処理用
+	absolute_time_t t, timestamp = get_absolute_time();
+	uint16_t key = 0;
+	uint16_t prev_key = 0;
+	uint8_t  report[HID_PACKET_SIZE] = {0};
+
 	// 外部電源有効化ピン
 	if(USE_EXT_POWER_ENABLE)
 	{
@@ -221,6 +228,9 @@ int main(void)
 	gpio_init(DCDC_MODE_PIN);
 	gpio_set_dir(DCDC_MODE_PIN, true);
 	gpio_put(DCDC_MODE_PIN, true);
+	
+	// ボタンを初期化
+	buttons_init();
 
 	// ESS DACを初期化
 	if (USE_ESS_DAC)
@@ -263,6 +273,44 @@ int main(void)
 		if(TEST_MODE) gpio_put(TEST_PIN1, true);
 		upsampling_process_core0();
 		if(TEST_MODE) gpio_put(TEST_PIN1, false);
+
+		t = get_absolute_time();
+		// 一定のインターバルを設ける
+		if (absolute_time_diff_us(timestamp, t) > DEBOUNCE_US)
+		{
+			switch(buttons_get())
+			{
+				case 1:
+					key = CONSUMER_PREVIOUS;
+					break;
+				case 2:
+					key = CONSUMER_PLAY_PAUSE;
+					break;
+				case 3:
+					key = CONSUMER_NEXT;
+					break;
+				case 4:
+					key = CONSUMER_STOP;
+					break;
+				case 5:
+					key = CONSUMER_VOL_DOWN;
+					break;
+				case 6:
+					key = CONSUMER_VOL_UP;
+					break;
+				default:
+					key = 0;
+					break;
+			}
+			if (prev_key != key)
+			{
+				report[0] = key & 0xff;
+				report[1] = key >> 8;
+				hid_send_report(report, HID_PACKET_SIZE);
+				prev_key = key;
+				timestamp = t;
+			}
+		}
 
 		// ESS DAC用I2C送信処理
 		if (USE_ESS_DAC)

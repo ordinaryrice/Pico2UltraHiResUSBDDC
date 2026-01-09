@@ -111,6 +111,14 @@
 // Core1 FIR Filter Mode
 #define CORE1_FIR_MODE (CORE1_FIR_MODE_POLYPHASE)
 
+// HID
+#define BTN_BACK_PIN (8)
+#define BTN_PLAY_PAUSE_PIN (9)
+#define BTN_NEXT_PIN (10)
+#define BTN_STOP_PIN (11)
+#define BTN_VOL_DOWN_PIN (12)
+#define BTN_VOL_UP_PIN (13)
+
 // DCDC Control
 #define DCDC_MODE_PIN (23)
 
@@ -151,6 +159,9 @@
 // ノンブロッキングI2C
 #define SIZE_I2C_RINGBUFFER (16)
 #define SIZE_I2C_TRANSFER_UNIT (2)
+
+// ボタンのデバウンス時間(us)
+#define DEBOUNCE_US (40000)
 
 typedef struct
 {

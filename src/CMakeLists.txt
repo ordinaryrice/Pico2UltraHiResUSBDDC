@@ -1,3 +1,6 @@
+# HIDカスタム済みUSBデバイスソース
+pico_add_subdirectory(usb_device_hid)
+
 # CMSIS-DSP 必要ソースを選択（使う関数に応じて最小限にする）
 file(GLOB DSP_SRC
         ${CMAKE_CURRENT_SOURCE_DIR}/../CMSIS/DSP/Source/FilteringFunctions/arm_fir_f32.c
@@ -38,6 +41,7 @@ add_executable(Pico2UltraHiResUSBDDC
         debug_with_gpio.c
         ess_specific.c
         nonblocking_i2c.c
+        gpio_buttons.c
         ${DSP_SRC}
 )
 
@@ -67,7 +71,7 @@ target_include_directories(Pico2UltraHiResUSBDDC PRIVATE
 # Add any user requested libraries
 target_link_libraries(Pico2UltraHiResUSBDDC 
         hardware_pio 
-        usb_device 
+        usb_device_hid 
         pico_multicore
         hardware_clocks
         hardware_dma

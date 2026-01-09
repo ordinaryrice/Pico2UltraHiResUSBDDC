@@ -8,6 +8,7 @@
 #include "usb_device_control.h"
 #include "pico/usb_device.h"
 #include "lufa/AudioClassCommon.h"
+#include "lufa/HIDClassCommon.h"
 #include <arm_math.h>
 #include "common.h"
 #include "upsampling.h"
@@ -28,6 +29,7 @@ static char *descriptor_strings[] =
 
 #define AUDIO_OUT_ENDPOINT (0x01U)
 #define AUDIO_IN_ENDPOINT 0x82U
+#define HID_ENDPOINT (0x83U)
 
 #undef AUDIO_SAMPLE_FREQ
 #define AUDIO_SAMPLE_FREQ(frq) (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16))
@@ -43,65 +45,38 @@ static char *descriptor_strings[] =
 extern uint32_t now_playing;
 extern volatile bool is_high_power_mode;
 
+bool is_new_report = false;
+
 static void _as_audio_packet(struct usb_endpoint *ep);
+static void _hid_in_packet(struct usb_endpoint *ep);
 
-// USB descriptor for HiRes Audio
-struct audio_device_config
+// HID report descriptor for consumer control
+uint8_t hid_report_descriptor[] =
 {
-	struct usb_configuration_descriptor descriptor;
-	struct usb_interface_descriptor ac_interface;
-	struct __packed
-	{
-		USB_Audio_StdDescriptor_Interface_AC_t core;
-		USB_Audio_StdDescriptor_InputTerminal_t input_terminal;
-		USB_Audio_StdDescriptor_FeatureUnit_t feature_unit;
-		USB_Audio_StdDescriptor_OutputTerminal_t output_terminal;
-	} ac_audio;
-	struct usb_interface_descriptor as_zero_interface;
-
-	struct usb_interface_descriptor as_op_interface;
-	struct __packed
-	{
-		USB_Audio_StdDescriptor_Interface_AS_t streaming;
-		struct __packed
-		{
-			USB_Audio_StdDescriptor_Format_t core;
-			USB_Audio_SampleFreq_t freqs[4]; // 44.1/48/88.2/96kHz対応のため配列数を2->4に増やす
-		} format;
-	} as_audio;
-	struct __packed
-	{
-		struct usb_endpoint_descriptor_long core;
-		USB_Audio_StdDescriptor_StreamEndpoint_Spc_t audio;
-	} ep1;
-	struct usb_endpoint_descriptor_long ep2;
-
-	// Alternate2 : 24bit再生用の定義
-	struct usb_interface_descriptor as_op_interface_2;
-	struct __packed
-	{
-		USB_Audio_StdDescriptor_Interface_AS_t streaming;
-		struct __packed
-		{
-			USB_Audio_StdDescriptor_Format_t core;
-			USB_Audio_SampleFreq_t freqs[4]; // <- 44.1/48/88.2/96kHz対応のため配列数を4とする
-		} format;
-	} as_audio_2;
-	struct __packed
-	{
-		struct usb_endpoint_descriptor_long core;
-		USB_Audio_StdDescriptor_StreamEndpoint_Spc_t audio;
-	} ep1_2;
-	struct usb_endpoint_descriptor_long ep2_2;
+    0x05, 0x0C,            // Usage Page (Consumer)
+    0x09, 0x01,            // Usage (Consumer Control)
+    0xA1, 0x01,            // Collection (Application)
+    0x19, 0x00,            //   Usage Minimum (Unassigned)
+    0x2A, 0x3C, 0x02,      //   Usage Maximum (AC Format)
+    0x15, 0x00,            //   Logical Minimum (0)
+    0x26, 0x3C, 0x02,      //   Logical Maximum (572)
+    0x95, 0x01,            //   Report Count (1)
+    0x75, 0x10,            //   Report Size (16)
+    0x81, 0x00,            //   Input (Data,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0x95, HID_BLANK_COUNT, //   Report Count
+    0x75, 0x08,            //   Report Size (8)
+    0x81, 0x01,            //   Input (Const,Array,Abs,No Wrap,Linear,Preferred State,No Null Position)
+    0xC0,                  // End Collection
 };
+const size_t hid_report_descriptor_len = sizeof(hid_report_descriptor);
 
-static const struct audio_device_config audio_device_config =
+const struct audio_device_config audio_device_config =
 	{
 		.descriptor = {
 			.bLength = sizeof(audio_device_config.descriptor),
 			.bDescriptorType = DTYPE_Configuration,
 			.wTotalLength = sizeof(audio_device_config),
-			.bNumInterfaces = 2,
+			.bNumInterfaces = 3,
 			.bConfigurationValue = 0x01,
 			.iConfiguration = 0x00,
 			.bmAttributes = 0x80,
@@ -293,11 +268,43 @@ static const struct audio_device_config audio_device_config =
 			.bInterval = 0x01,
 			.bRefresh = 0, // 1ms
 			.bSyncAddr = 0,
+		},
+		// HID Interface
+		.hid_interface = {
+			.bLength = sizeof(audio_device_config.hid_interface),
+			.bDescriptorType = DTYPE_Interface,
+			.bInterfaceNumber = 0x02,
+			.bAlternateSetting = 0x00,
+			.bNumEndpoints = 0x01,
+			.bInterfaceClass = 0x03, // HID Class
+			.bInterfaceSubClass = 0x00,
+			.bInterfaceProtocol = 0x00,
+			.iInterface = 0x00,
+		},
+		.hid_descriptor = {
+			.hid = {
+				.bLength = sizeof(audio_device_config.hid_descriptor.hid),
+				.bDescriptorType = HID_DTYPE_HID,
+				.bcdHID = VERSION_BCD(1, 1, 1),
+				.bCountryCode = 0x00,
+				.bNumDescriptors = 0x01,
+				.bDescriptorType2 = HID_DTYPE_Report,
+				.wDescriptorLength = sizeof(hid_report_descriptor),
+			},
+			.ep = {
+				.bLength = sizeof(audio_device_config.hid_descriptor.ep),
+				.bDescriptorType = DTYPE_Endpoint,
+				.bEndpointAddress = HID_ENDPOINT,
+				.bmAttributes = 0x03, // Interrupt endpoint
+				.wMaxPacketSize = HID_PACKET_SIZE, // HID report size (smaller than audio endpoints)
+				.bInterval = 0x01, // 8ms polling (can change as needed),
+			}
 		}};
 
 static struct usb_interface ac_interface;
 static struct usb_interface as_op_interface;
-static struct usb_endpoint ep_op_out, ep_op_sync;
+static struct usb_interface hid_interface;
+static struct usb_endpoint ep_op_out, ep_op_sync, ep_hid_in;
 
 static const struct usb_device_descriptor boot_device_descriptor = {
 	.bLength = 18,
@@ -435,8 +442,15 @@ static const struct usb_transfer_type as_sync_transfer_type = {
 	.initial_packet_count = 1,
 };
 
+static const struct usb_transfer_type hid_in_transfer_type = {
+	.on_packet = _hid_in_packet,
+	.initial_packet_count = 1,
+};
+
 static struct usb_transfer as_transfer;
 static struct usb_transfer as_sync_transfer;
+static struct usb_transfer hid_in_transfer;
+static uint8_t hid_report[HID_PACKET_SIZE] = {0};
 
 static bool do_get_current(struct usb_setup_packet *setup)
 {
@@ -700,6 +714,81 @@ bool _as_setup_request_handler(__unused struct usb_endpoint *ep, struct usb_setu
 	return false;
 }
 
+bool hid_setup_request_handler(__unused struct usb_endpoint *ep, struct usb_setup_packet *setup)
+{
+	setup = __builtin_assume_aligned(setup, 4);
+	if (USB_REQ_TYPE_TYPE_CLASS == (setup->bmRequestType & USB_REQ_TYPE_TYPE_MASK))
+	{
+		switch (setup->bRequest)
+		{
+			case HID_REQ_GetReport:
+			{
+				usb_debug("GET_REPORT");
+				return true;
+			}
+			case HID_REQ_SetReport:
+			{
+				usb_debug("SET_REPORT");
+				usb_start_empty_control_in_transfer_null_completion();
+				return true;
+			}
+			case HID_REQ_GetProtocol:
+			{
+				usb_debug("GET_PROTOCOL");
+				usb_start_tiny_control_in_transfer(0, 1);
+				return true;
+			}
+			case HID_REQ_SetProtocol:
+			{
+				usb_debug("SET_PROTOCOL");
+				usb_start_empty_control_in_transfer_null_completion();
+				return true;
+			}
+			case HID_REQ_GetIdle:
+			{
+				usb_debug("GET_IDLE");
+				usb_start_tiny_control_in_transfer(0, 1);
+				return true;
+			}
+			case HID_REQ_SetIdle:
+			{
+				usb_debug("SET_IDLE");
+				usb_start_empty_control_in_transfer_null_completion();
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+static void _hid_in_packet(struct usb_endpoint *ep)
+{
+	struct usb_buffer *buffer = usb_current_in_packet_buffer(ep);
+	if (is_new_report){
+		
+		// HIDレポート送信時のパケット準備
+		memcpy(buffer->data, hid_report, sizeof(hid_report));
+		buffer->data_len = sizeof(hid_report);
+		is_new_report = false;
+	}
+	else {
+		buffer->data_len = 0;
+	}
+    
+    usb_grow_transfer(ep->current_transfer, 1);
+    usb_packet_done(ep);
+}
+
+// HIDレポート送信関数
+void hid_send_report(uint8_t* report, uint8_t len) {
+	if (len > sizeof(hid_report)) {
+		len = sizeof(hid_report);
+	}
+	memset(hid_report, 0, sizeof(hid_report));
+	memcpy(hid_report, report, len);
+	is_new_report = true;
+}
+
 void usb_sound_card_init()
 {
 	// msd_interface.setup_request_handler = msd_setup_request_handler;
@@ -709,17 +798,24 @@ void usb_sound_card_init()
 	static struct usb_endpoint *const op_endpoints[] = {
 		&ep_op_out, &ep_op_sync};
 	usb_interface_init(&as_op_interface, &audio_device_config.as_op_interface, op_endpoints, count_of(op_endpoints),
-					   true);
+					   false);
 	as_op_interface.set_alternate_handler = as_set_alternate;
 	ep_op_out.setup_request_handler = _as_setup_request_handler;
 	as_transfer.type = &as_transfer_type;
 	usb_set_default_transfer(&ep_op_out, &as_transfer);
 	as_sync_transfer.type = &as_sync_transfer_type;
 	usb_set_default_transfer(&ep_op_sync, &as_sync_transfer);
+	
+	static struct usb_endpoint *const hid_endpoints[] = {&ep_hid_in};
+	usb_interface_init(&hid_interface, &audio_device_config.hid_interface, hid_endpoints, count_of(hid_endpoints), false);
+	ep_hid_in.setup_request_handler = hid_setup_request_handler;
+	hid_in_transfer.type = &hid_in_transfer_type;
+	usb_set_default_transfer(&ep_hid_in, &hid_in_transfer);
 
 	static struct usb_interface *const boot_device_interfaces[] = {
 		&ac_interface,
 		&as_op_interface,
+		&hid_interface,
 	};
 	__unused struct usb_device *device = usb_device_init(&boot_device_descriptor, &audio_device_config.descriptor,
 														 boot_device_interfaces, count_of(boot_device_interfaces),
