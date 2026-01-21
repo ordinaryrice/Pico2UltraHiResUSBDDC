@@ -297,7 +297,7 @@ const struct audio_device_config audio_device_config =
 				.bEndpointAddress = HID_ENDPOINT,
 				.bmAttributes = 0x03, // Interrupt endpoint
 				.wMaxPacketSize = HID_PACKET_SIZE, // HID report size (smaller than audio endpoints)
-				.bInterval = 0x01, // 8ms polling (can change as needed),
+				.bInterval = 0x28, // 40ms polling (can change as needed),
 			}
 		}};
 
