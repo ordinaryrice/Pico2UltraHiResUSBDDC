@@ -798,7 +798,7 @@ void usb_sound_card_init()
 	static struct usb_endpoint *const op_endpoints[] = {
 		&ep_op_out, &ep_op_sync};
 	usb_interface_init(&as_op_interface, &audio_device_config.as_op_interface, op_endpoints, count_of(op_endpoints),
-					   false);
+					   true);
 	as_op_interface.set_alternate_handler = as_set_alternate;
 	ep_op_out.setup_request_handler = _as_setup_request_handler;
 	as_transfer.type = &as_transfer_type;
