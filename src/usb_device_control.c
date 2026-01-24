@@ -27,9 +27,9 @@ static char *descriptor_strings[] =
 #define VENDOR_ID (0x2e8au)
 #define PRODUCT_ID (0xfeddu)
 
-#define AUDIO_OUT_ENDPOINT (0x01U)
-#define AUDIO_IN_ENDPOINT 0x82U
-#define HID_ENDPOINT (0x83U)
+#define HID_ENDPOINT (0x81U)
+#define AUDIO_OUT_ENDPOINT (0x02U)
+#define AUDIO_IN_ENDPOINT 0x83U
 
 #undef AUDIO_SAMPLE_FREQ
 #define AUDIO_SAMPLE_FREQ(frq) (uint8_t)(frq), (uint8_t)((frq >> 8)), (uint8_t)((frq >> 16))
